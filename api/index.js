@@ -55,11 +55,11 @@ app.get('/callback', async (req, res) => {
         const tokenResponse = await axios.post(
             tokenUrl,
             new URLSearchParams({
-                client_key: CLIENT_KEY,
-                client_secret: CLIENT_SECRET,
+                client_key: "sbaw2jvhniyw1woysb",
+                client_secret: "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs",
                 code,
                 grant_type: 'authorization_code',
-                redirect_uri: SERVER_ENDPOINT_REDIRECT,
+                redirect_uri: "https://portfolio-web-site-seven.vercel.app/callback",
             }).toString(),
             {
                 headers: {

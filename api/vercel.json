@@ -2,7 +2,7 @@
     "version": 2,
     "builds": [
         {
-            "src": "server.js",
+            "src": "index.js",
             "use": "@vercel/node"
         }
     ],
@@ -22,7 +22,7 @@
                 },
                 {
                     "key": "Access-Control-Allow-Origin",
-                    "value": "https://full-stack-chat-application-front-end.vercel.app"
+                    "value": "*"
                 },
                 {
                     "key": "Access-Control-Allow-Methods",
