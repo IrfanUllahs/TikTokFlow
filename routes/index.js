@@ -21,7 +21,7 @@ app.listen(PORT, () => {
 });
 
 // Step 1: Redirect user to TikTok for login
-app.get('api/oauth', (req, res) => {
+app.get('/api/oauth', (req, res) => {
     const csrfState = Math.random().toString(36).substring(2); // Generate a CSRF token
     res.cookie('csrfState', csrfState, { maxAge: 60000 }); // Set CSRF token as a cookie
 
@@ -37,7 +37,7 @@ app.get('api/oauth', (req, res) => {
 });
 
 // Step 2: Handle the callback from TikTok
-app.get('api/callback', async (req, res) => {
+app.get('/api/callback', async (req, res) => {
     const { code, state } = req.query;
     const csrfState = req.cookies.csrfState;
 
