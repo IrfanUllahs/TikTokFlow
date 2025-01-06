@@ -100,12 +100,12 @@ app.get("/api/callback", async (req, res) => {
         const decode = decodeURI(code);
         const tokenEndpoint = "https://open.tiktokapis.com/v2/oauth/token/";
         const params = {
-            client_key: "< Your client key>",
-            client_secret: "<Your client secret>",
+            client_key: "sbaw2jvhniyw1woysb",
+            client_secret: "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs",
             code: decode,
             grant_type: "authorization_code",
             redirect_uri:
-                "<your redirect uri>",
+                "https://tik-tok-flow.vercel.app/api/callback",
         };
         const response = await axios.post(
             tokenEndpoint,
