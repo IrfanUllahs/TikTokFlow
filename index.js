@@ -37,60 +37,91 @@ app.get('/api/oauth', (req, res) => {
 });
 
 // // Step 2: Handle the callback from TikTok
-app.get('/api/callback', async (req, res) => {
-    const { code, state } = req.query;
-    const csrfState = req.cookies.csrfState;
+// app.get('/api/callback', async (req, res) => {
+//     const { code, state } = req.query;
+//     const csrfState = req.cookies.csrfState;
 
-    if (!state || state !== csrfState) {
-        return res.status(400).send('CSRF validation failed');
-    }
+//     if (!state || state !== csrfState) {
+//         return res.status(400).send('CSRF validation failed');
+//     }
 
-    if (!code) {
-        return res.status(400).send('Authorization code not provided');
-    }
+//     if (!code) {
+//         return res.status(400).send('Authorization code not provided');
+//     }
 
+//     try {
+//         // Exchange code for access token
+//         const tokenUrl = 'https://open-api.tiktokglobalplatform.com/v2/oauth/token';
+//         const tokenResponse = await axios.post(
+//             tokenUrl,
+//             new URLSearchParams({
+//                 client_key: "sbaw2jvhniyw1woysb",
+//                 client_secret: "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs",
+//                 code,
+//                 grant_type: 'authorization_code',
+//                 redirect_uri: "https://tik-tok-flow.vercel.app/api/callback",
+//             }).toString(),
+//             {
+//                 headers: {
+//                     'Content-Type': 'application/x-www-form-urlencoded',
+//                 },
+//             }
+//         );
+
+//         const tokenData = tokenResponse.data;
+
+//         if (tokenData.error) {
+//             return res.status(400).json({ error: tokenData.error });
+//         }
+
+//         // Step 3: Use the access token to get user info
+//         const userInfoUrl = 'https://open-api.tiktokglobalplatform.com/v2/user/info';
+//         const userInfoResponse = await axios.get(userInfoUrl, {
+//             headers: {
+//                 Authorization: `Bearer ${tokenData.access_token}`,
+//             },
+//         });
+
+//         const userInfo = userInfoResponse.data;
+//         res.json(userInfo); // Send user info back as JSON
+//     } catch (error) {
+//         console.error('Error during TikTok OAuth process:', error.message);
+//         res.status(500).send({
+//             error: 'An error occurred during TikTok OAuth process',
+//             errorDetails: error.message,
+//             error
+//         });
+//     }
+// });
+
+app.get("/api/callback", async (req, res) => {
     try {
-        // Exchange code for access token
-        const tokenUrl = 'https://open-api.tiktokglobalplatform.com/v2/oauth/token';
-        const tokenResponse = await axios.post(
-            tokenUrl,
-            new URLSearchParams({
-                client_key: "sbaw2jvhniyw1woysb",
-                client_secret: "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs",
-                code,
-                grant_type: 'authorization_code',
-                redirect_uri: "https://tik-tok-flow.vercel.app/api/callback",
-            }).toString(),
+        const { code } = req.body;
+        const decode = decodeURI(code);
+        const tokenEndpoint = "https://open.tiktokapis.com/v2/oauth/token/";
+        const params = {
+            client_key: "< Your client key>",
+            client_secret: "<Your client secret>",
+            code: decode,
+            grant_type: "authorization_code",
+            redirect_uri:
+                "<your redirect uri>",
+        };
+        const response = await axios.post(
+            tokenEndpoint,
+            querystring.stringify(params),
             {
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Cache-Control": "no-cache",
                 },
             }
         );
-
-        const tokenData = tokenResponse.data;
-
-        if (tokenData.error) {
-            return res.status(400).json({ error: tokenData.error });
-        }
-
-        // Step 3: Use the access token to get user info
-        const userInfoUrl = 'https://open-api.tiktokglobalplatform.com/v2/user/info';
-        const userInfoResponse = await axios.get(userInfoUrl, {
-            headers: {
-                Authorization: `Bearer ${tokenData.access_token}`,
-            },
-        });
-
-        const userInfo = userInfoResponse.data;
-        res.json(userInfo); // Send user info back as JSON
+        console.log("response>>>>>>>", response.data);
+        res.send(response.data);
     } catch (error) {
-        console.error('Error during TikTok OAuth process:', error.message);
-        res.status(500).send({
-            error: 'An error occurred during TikTok OAuth process',
-            errorDetails: error.message,
-            error
-        });
+        console.error("Error during callback:", error.message);
+        res.status(500).send("An error occurred during the login process.");
     }
 });
 
