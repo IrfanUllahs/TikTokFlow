@@ -86,7 +86,11 @@ app.get('/api/callback', async (req, res) => {
         res.json(userInfo); // Send user info back as JSON
     } catch (error) {
         console.error('Error during TikTok OAuth process:', error.message);
-        res.status(500).send('Internal Server Error');
+        res.status(500).send({
+            error: 'An error occurred during TikTok OAuth process',
+            errorDetails: error.message,
+            error
+        });
     }
 });
 
