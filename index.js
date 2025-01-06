@@ -96,7 +96,7 @@ app.get('/api/oauth', (req, res) => {
 
 app.get("/api/callback", async (req, res) => {
     try {
-        const { code } = req.body;
+        const { code, state } = req.query;
         const decode = decodeURI(code);
         const tokenEndpoint = "https://open.tiktokapis.com/v2/oauth/token/";
         const params = {
