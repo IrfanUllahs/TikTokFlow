@@ -121,7 +121,11 @@ app.get("/api/callback", async (req, res) => {
         res.send(response.data);
     } catch (error) {
         console.error("Error during callback:", error.message);
-        res.status(500).send("An error occurred during the login process.");
+        res.status(500).send({
+            error: "An error occurred during callback",
+            errorDetails: error.message,
+            error
+        });
     }
 });
 
