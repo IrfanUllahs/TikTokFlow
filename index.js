@@ -21,74 +21,74 @@ app.listen(PORT, () => {
 });
 
 // Step 1: Redirect user to TikTok for login
-// app.get('/api/oauth', (req, res) => {
-//     const csrfState = Math.random().toString(36).substring(2); // Generate a CSRF token
-//     res.cookie('csrfState', csrfState, { maxAge: 60000 }); // Set CSRF token as a cookie
+app.get('/api/oauth', (req, res) => {
+    const csrfState = Math.random().toString(36).substring(2); // Generate a CSRF token
+    res.cookie('csrfState', csrfState, { maxAge: 60000 }); // Set CSRF token as a cookie
 
-//     let url = 'https://www.tiktok.com/v2/auth/authorize';
+    let url = 'https://www.tiktok.com/v2/auth/authorize';
 
-//     url += `?client_key=${CLIENT_KEY}`;
-//     url += '&scope=user.info.basic';
-//     url += '&response_type=code';
-//     url += `&redirect_uri=${encodeURIComponent(SERVER_ENDPOINT_REDIRECT)}`;
-//     url += `&state=${csrfState}`;
+    url += `?client_key=${CLIENT_KEY}`;
+    url += '&scope=user.info.basic';
+    url += '&response_type=code';
+    url += `&redirect_uri=${encodeURIComponent(SERVER_ENDPOINT_REDIRECT)}`;
+    url += `&state=${csrfState}`;
 
-//     res.redirect(url);
-// });
+    res.redirect(url);
+});
 
 // // Step 2: Handle the callback from TikTok
-// app.get('/api/callback', async (req, res) => {
-//     const { code, state } = req.query;
-//     const csrfState = req.cookies.csrfState;
+app.get('/api/callback', async (req, res) => {
+    const { code, state } = req.query;
+    const csrfState = req.cookies.csrfState;
 
-//     if (!state || state !== csrfState) {
-//         return res.status(400).send('CSRF validation failed');
-//     }
+    if (!state || state !== csrfState) {
+        return res.status(400).send('CSRF validation failed');
+    }
 
-//     if (!code) {
-//         return res.status(400).send('Authorization code not provided');
-//     }
+    if (!code) {
+        return res.status(400).send('Authorization code not provided');
+    }
 
-//     try {
-//         // Exchange code for access token
-//         const tokenUrl = 'https://open-api.tiktokglobalplatform.com/v2/oauth/token';
-//         const tokenResponse = await axios.post(
-//             tokenUrl,
-//             new URLSearchParams({
-//                 client_key: "sbaw2jvhniyw1woysb",
-//                 client_secret: "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs",
-//                 code,
-//                 grant_type: 'authorization_code',
-//                 redirect_uri: "https://portfolio-web-site-seven.vercel.app/callback",
-//             }).toString(),
-//             {
-//                 headers: {
-//                     'Content-Type': 'application/x-www-form-urlencoded',
-//                 },
-//             }
-//         );
+    try {
+        // Exchange code for access token
+        const tokenUrl = 'https://open-api.tiktokglobalplatform.com/v2/oauth/token';
+        const tokenResponse = await axios.post(
+            tokenUrl,
+            new URLSearchParams({
+                client_key: "sbaw2jvhniyw1woysb",
+                client_secret: "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs",
+                code,
+                grant_type: 'authorization_code',
+                redirect_uri: "https://portfolio-web-site-seven.vercel.app/callback",
+            }).toString(),
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            }
+        );
 
-//         const tokenData = tokenResponse.data;
+        const tokenData = tokenResponse.data;
 
-//         if (tokenData.error) {
-//             return res.status(400).json({ error: tokenData.error });
-//         }
+        if (tokenData.error) {
+            return res.status(400).json({ error: tokenData.error });
+        }
 
-//         // Step 3: Use the access token to get user info
-//         const userInfoUrl = 'https://open-api.tiktokglobalplatform.com/v2/user/info';
-//         const userInfoResponse = await axios.get(userInfoUrl, {
-//             headers: {
-//                 Authorization: `Bearer ${tokenData.access_token}`,
-//             },
-//         });
+        // Step 3: Use the access token to get user info
+        const userInfoUrl = 'https://open-api.tiktokglobalplatform.com/v2/user/info';
+        const userInfoResponse = await axios.get(userInfoUrl, {
+            headers: {
+                Authorization: `Bearer ${tokenData.access_token}`,
+            },
+        });
 
-//         const userInfo = userInfoResponse.data;
-//         res.json(userInfo); // Send user info back as JSON
-//     } catch (error) {
-//         console.error('Error during TikTok OAuth process:', error.message);
-//         res.status(500).send('Internal Server Error');
-//     }
-// });
+        const userInfo = userInfoResponse.data;
+        res.json(userInfo); // Send user info back as JSON
+    } catch (error) {
+        console.error('Error during TikTok OAuth process:', error.message);
+        res.status(500).send('Internal Server Error');
+    }
+});
 
 // Step 4: Home route for testing
 app.use('/', (req, res) => {
