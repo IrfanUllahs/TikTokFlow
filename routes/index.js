@@ -91,6 +91,6 @@ app.get('api/callback', async (req, res) => {
 });
 
 // Step 4: Home route for testing
-app.get('/', (req, res) => {
+app.use('/', (req, res) => {
     res.send('Welcome to the TikTok OAuth server. Navigate to /oauth to start the login process.');
 });
