@@ -12,7 +12,7 @@ app.use(cors());
 // Constants (replace with your actual values)
 const CLIENT_KEY = "sbaw2jvhniyw1woysb"; // Your TikTok client key from the developer portal
 const CLIENT_SECRET = "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs"; // Your TikTok client secret
-const SERVER_ENDPOINT_REDIRECT = "https://portfolio-web-site-seven.vercel.app/callback"; // Your redirect URI
+const SERVER_ENDPOINT_REDIRECT = "https://tik-tok-flow.vercel.app/api/callback"; // Your redirect URI
 
 // Server listening on port
 const PORT = process.env.PORT || 5000;
@@ -59,7 +59,7 @@ app.get('/api/callback', async (req, res) => {
                 client_secret: "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs",
                 code,
                 grant_type: 'authorization_code',
-                redirect_uri: "https://portfolio-web-site-seven.vercel.app/callback",
+                redirect_uri: "https://tik-tok-flow.vercel.app/api/callback",
             }).toString(),
             {
                 headers: {
