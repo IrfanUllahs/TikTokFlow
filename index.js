@@ -65,7 +65,7 @@ app.get("/api/callback", async (req, res) => {
 
         if (response.data.access_token) {
             const allvideosdata = await axios.post(
-                "https://open.tiktokapis.com/v2/video/list/?fields=id,title,cover_image_url",
+                "https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name",
                 {
                     max_count: 20,
                 },
