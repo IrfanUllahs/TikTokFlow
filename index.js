@@ -84,19 +84,19 @@ app.get("/api/callback", async (req, res) => {
             );
 
             // Fetch user's videos
-            const userVideosResponse = await axios.get(
-                "https://open.tiktokapis.com/v2/video/list/",
-                {
-                    params: {
-                        max_count: 20,
-                        fields: "id,title,video_description,duration,cover_image_url,embed_link",
-                    },
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
+            // const userVideosResponse = await axios.get(
+            //     "https://open.tiktokapis.com/v2/video/list/",
+            //     {
+            //         params: {
+            //             max_count: 20,
+            //             fields: "id,title,video_description,duration,cover_image_url,embed_link",
+            //         },
+            //         headers: {
+            //             Authorization: `Bearer ${accessToken}`,
+            //             "Content-Type": "application/json",
+            //         },
+            //     }
+            // );
 
             // Combine all data
             const data = {
@@ -105,11 +105,11 @@ app.get("/api/callback", async (req, res) => {
                 expires_in: response.data.expires_in,
                 scope: response.data.scope,
                 user_info: userInfoResponse.data,
-                user_videos: userVideosResponse.data,
+                // user_videos: userVideosResponse.data,
             };
 
-            console.log("User Info:", data.user_info);
-            console.log("User Videos:", data.user_videos);
+            // console.log("User Info:", data.user_info);
+            // console.log("User Videos:", data.user_videos);
 
             res.send(data);
         } else {
