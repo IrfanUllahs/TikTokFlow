@@ -1,5 +1,44 @@
-const axios = require("axios");
-const querystring = require("querystring");
+const express = require('express');
+const app = express();
+const axios = require('axios');
+const cookieParser = require('cookie-parser');
+const querystring = require('querystring');
+const cors = require('cors');
+require('dotenv').config();
+
+// Middleware setup
+app.use(cookieParser());
+app.use(cors());
+
+// Constants (replace with your actual values)
+const CLIENT_KEY = "sbaw2jvhniyw1woysb"; // Your TikTok client key from the developer portal
+const CLIENT_SECRET = "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs"; // Your TikTok client secret
+const SERVER_ENDPOINT_REDIRECT = "https://tik-tok-flow.vercel.app/api/callback"; // Your redirect URI
+
+// Server listening on port
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
+
+// Step 1: Redirect user to TikTok for login
+app.get('/api/oauth', (req, res) => {
+    const csrfState = Math.random().toString(36).substring(2); // Generate a CSRF token
+    res.cookie('csrfState', csrfState, { maxAge: 60000 }); // Set CSRF token as a cookie
+
+    let url = 'https://www.tiktok.com/v2/auth/authorize';
+
+    url += `?client_key=${CLIENT_KEY}`;
+    url += '&scope=user.info.basic';
+    url += '&response_type=code';
+    url += `&redirect_uri=${encodeURIComponent(SERVER_ENDPOINT_REDIRECT)}`;
+    url += `&state=${csrfState}`;
+
+    res.redirect(url);
+});
+
+
+
 
 app.get("/api/callback", async (req, res) => {
     try {
@@ -86,4 +125,10 @@ app.get("/api/callback", async (req, res) => {
             error,
         });
     }
+});
+
+
+// Step 4: Home route for testing
+app.use('/', (req, res) => {
+    res.send('Welcome to the TikTok OAuth server. Navigate to /oauth to start the login process.');
 });
