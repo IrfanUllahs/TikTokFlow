@@ -37,63 +37,6 @@ app.get('/api/oauth', (req, res) => {
     res.redirect(url);
 });
 
-// // Step 2: Handle the callback from TikTok
-// app.get('/api/callback', async (req, res) => {
-//     const { code, state } = req.query;
-//     const csrfState = req.cookies.csrfState;
-
-//     if (!state || state !== csrfState) {
-//         return res.status(400).send('CSRF validation failed');
-//     }
-
-//     if (!code) {
-//         return res.status(400).send('Authorization code not provided');
-//     }
-
-//     try {
-//         // Exchange code for access token
-//         const tokenUrl = 'https://open-api.tiktokglobalplatform.com/v2/oauth/token';
-//         const tokenResponse = await axios.post(
-//             tokenUrl,
-//             new URLSearchParams({
-//                 client_key: "sbaw2jvhniyw1woysb",
-//                 client_secret: "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs",
-//                 code,
-//                 grant_type: 'authorization_code',
-//                 redirect_uri: "https://tik-tok-flow.vercel.app/api/callback",
-//             }).toString(),
-//             {
-//                 headers: {
-//                     'Content-Type': 'application/x-www-form-urlencoded',
-//                 },
-//             }
-//         );
-
-//         const tokenData = tokenResponse.data;
-
-//         if (tokenData.error) {
-//             return res.status(400).json({ error: tokenData.error });
-//         }
-
-//         // Step 3: Use the access token to get user info
-//         const userInfoUrl = 'https://open-api.tiktokglobalplatform.com/v2/user/info';
-//         const userInfoResponse = await axios.get(userInfoUrl, {
-//             headers: {
-//                 Authorization: `Bearer ${tokenData.access_token}`,
-//             },
-//         });
-
-//         const userInfo = userInfoResponse.data;
-//         res.json(userInfo); // Send user info back as JSON
-//     } catch (error) {
-//         console.error('Error during TikTok OAuth process:', error.message);
-//         res.status(500).send({
-//             error: 'An error occurred during TikTok OAuth process',
-//             errorDetails: error.message,
-//             error
-//         });
-//     }
-// });
 
 app.get("/api/callback", async (req, res) => {
     try {
@@ -118,7 +61,33 @@ app.get("/api/callback", async (req, res) => {
                 },
             }
         );
-        console.log("response>>>>>>>", response.data);
+
+
+        if (response.data.access_token) {
+            const allvideosdata = await axios.post(
+                "https://open.tiktokapis.com/v2/video/list/?fields=id,title,video_description,duration,cover_image_url,embed_link",
+                {
+                    max_count: 20,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${response.data.access_token}`,
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            data = {
+                access_token: response.data.access_token,
+                refresh_token: response.data.refresh_token,
+                expires_in: response.data.expires_in,
+                scope: response.data.scope,
+                data: allvideosdata
+            };
+
+            console.log(allvideosdata.data.data.videos);//Lists all videos of user along with other details
+            res.send(data)
+        }
+        // console.log("response>>>>>>>", response.data);
         res.send(response.data);
     } catch (error) {
         console.error("Error during callback:", error.message);
