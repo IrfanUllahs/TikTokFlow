@@ -29,7 +29,7 @@ app.get('/api/oauth', (req, res) => {
     let url = 'https://www.tiktok.com/v2/auth/authorize';
 
     url += `?client_key=${CLIENT_KEY}`;
-    url += '&scope=user.info.basic';
+    url += '&scope=user.info.basic,video.publish';
     url += '&response_type=code';
     url += `&redirect_uri=${encodeURIComponent(SERVER_ENDPOINT_REDIRECT)}`;
     url += `&state=${csrfState}`;
