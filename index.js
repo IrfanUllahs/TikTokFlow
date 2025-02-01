@@ -150,13 +150,13 @@ const uploadVideoToTikTok = async (accessToken) => {
         });
 
         // Save the video locally
-        const writer = fs.createWriteStream(videoPath);
-        response.data.pipe(writer);
+        // const writer = fs.createWriteStream(videoPath);
+        // response.data.pipe(writer);
 
-        await new Promise((resolve, reject) => {
-            writer.on("finish", resolve);
-            writer.on("error", reject);
-        });
+        // await new Promise((resolve, reject) => {
+        //     writer.on("finish", resolve);
+        //     writer.on("error", reject);
+        // });
 
         console.log("Video downloaded successfully.");
 
@@ -164,7 +164,7 @@ const uploadVideoToTikTok = async (accessToken) => {
         const uploadResponse = await axios.post(
             "https://open.tiktokapis.com/v2/video/upload/",
             {
-                video_file: fs.createReadStream(videoPath),
+                video_file: response.data,
                 title: "My Test Video",
                 caption: "This is a test upload via API",
             },
@@ -176,10 +176,10 @@ const uploadVideoToTikTok = async (accessToken) => {
             }
         );
 
-        console.log("TikTok Upload Response:", uploadResponse.data);
+        // console.log("TikTok Upload Response:", uploadResponse.data);
 
-        // Step 3: Clean up (delete local file)
-        fs.unlinkSync(videoPath);
+        // // Step 3: Clean up (delete local file)
+        // fs.unlinkSync(videoPath);
 
         return uploadResponse.data; // Return TikTok response
     } catch (error) {
