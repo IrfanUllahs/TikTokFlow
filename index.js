@@ -6,6 +6,8 @@ const querystring = require('querystring');
 const cors = require('cors');
 const fs = require("fs");
 const path = require("path");
+const formData = new FormData();
+
 require('dotenv').config();
 
 // Middleware setup
@@ -150,38 +152,81 @@ const uploadVideoToTikTok = async (accessToken) => {
         });
 
         // Save the video locally
-        // const writer = fs.createWriteStream(videoPath);
-        // response.data.pipe(writer);
+        const writer = fs.createWriteStream(videoPath);
+        response.data.pipe(writer);
 
-        // await new Promise((resolve, reject) => {
-        //     writer.on("finish", resolve);
-        //     writer.on("error", reject);
-        // });
+        await new Promise((resolve, reject) => {
+            writer.on("finish", resolve);
+            writer.on("error", reject);
+        });
 
         console.log("Video downloaded successfully.");
 
-        // Step 2: Upload video to TikTok
-        const uploadResponse = await axios.post(
-            "https://open.tiktokapis.com/v2/video/upload/",
-            {
-                video_file: response.data,
-                title: "My Test Video",
-                caption: "This is a test upload via API",
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    "Content-Type": "multipart/form-data",
+        // Step 2: Split the video into chunks
+        const chunkSize = 10000000; // 10MB per chunk
+        const videoStats = fs.statSync(videoPath);
+        const totalChunks = Math.ceil(videoStats.size / chunkSize); // Total number of chunks
+
+        // Function to upload each chunk
+        const uploadChunk = async (chunkData, chunkIndex, totalChunks) => {
+            formData.append("video_file", chunkData, { filename: `video_chunk_${chunkIndex + 1}.mp4` });
+
+            const data = {
+                post_info: {
+                    title: "My Test Video",
+                    caption: "This is a test upload via API",
+                    privacy_level: "MUTUAL_FOLLOW_FRIENDS",
+                    disable_duet: false,
+                    disable_comment: true,
+                    disable_stitch: false,
                 },
+                source_info: {
+                    source: "FILE_UPLOAD",
+                    video_size: videoStats.size,
+                    chunk_size: chunkSize,
+                    total_chunk_count: totalChunks,
+                },
+            };
+
+            try {
+                const uploadResponse = await axios.post(
+                    "https://open.tiktokapis.com/v2/video/upload/",
+                    data,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            "Content-Type": "multipart/form-data",
+                        },
+                    }
+                );
+                console.log(`Chunk ${chunkIndex + 1} uploaded successfully:`, uploadResponse.data);
+                return uploadResponse.data;
+            } catch (error) {
+                console.error(`Error uploading chunk ${chunkIndex + 1}:`, error.message);
+                return { error: `Chunk ${chunkIndex + 1} upload failed`, details: error.message };
             }
-        );
+        };
 
-        // console.log("TikTok Upload Response:", uploadResponse.data);
+        // Step 3: Upload video in chunks
+        const videoStream = fs.createReadStream(videoPath, { highWaterMark: chunkSize });
+        let chunkIndex = 0;
 
-        // // Step 3: Clean up (delete local file)
-        // fs.unlinkSync(videoPath);
+        videoStream.on('data', async (chunk) => {
+            console.log(`Uploading chunk ${chunkIndex + 1}...`);
+            const chunkData = chunk; // Get the chunk data
+            await uploadChunk(chunkData, chunkIndex, totalChunks); // Upload each chunk
+            chunkIndex++;
+        });
 
-        return uploadResponse.data; // Return TikTok response
+        videoStream.on('end', () => {
+            console.log("Video upload completed.");
+            // Step 4: Clean up (delete local file)
+            fs.unlinkSync(videoPath);
+        });
+
+        videoStream.on('error', (err) => {
+            console.error("Error reading the video file:", err.message);
+        });
     } catch (error) {
         console.error("Error uploading video:", error.message);
         return { error: "Video upload failed", details: error };
