@@ -142,7 +142,7 @@ const uploadVideoToTikTok = async (accessToken) => {
     try {
         // Video URL
         const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4";
-        const videoPath = path.join(__dirname, "video.mp4");
+        const videoPath = '/tmp/video.mp4';  // Save the video in the /tmp directory
 
         // Step 1: Download the video
         const response = await axios({
@@ -151,7 +151,7 @@ const uploadVideoToTikTok = async (accessToken) => {
             responseType: "stream",
         });
 
-        // Save the video locally
+        // Save the video locally in the /tmp directory
         const writer = fs.createWriteStream(videoPath);
         response.data.pipe(writer);
 
@@ -221,7 +221,7 @@ const uploadVideoToTikTok = async (accessToken) => {
         videoStream.on('end', () => {
             console.log("Video upload completed.");
             // Step 4: Clean up (delete local file)
-            fs.unlinkSync(videoPath);
+            fs.unlinkSync(videoPath);  // Delete the video from /tmp
         });
 
         videoStream.on('error', (err) => {
@@ -232,6 +232,7 @@ const uploadVideoToTikTok = async (accessToken) => {
         return { error: "Video upload failed", details: error };
     }
 };
+
 
 
 
