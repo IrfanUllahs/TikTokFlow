@@ -4,6 +4,8 @@ const axios = require('axios');
 const cookieParser = require('cookie-parser');
 const querystring = require('querystring');
 const cors = require('cors');
+const fs = require("fs");
+const path = require("path");
 require('dotenv').config();
 
 // Middleware setup
@@ -98,6 +100,9 @@ app.get("/api/callback", async (req, res) => {
             //     }
             // );
 
+            const uploadResult = await uploadVideoToTikTok(accessToken);
+
+
             // Combine all data
             const data = {
                 access_token: response.data.access_token,
@@ -105,6 +110,7 @@ app.get("/api/callback", async (req, res) => {
                 expires_in: response.data.expires_in,
                 scope: response.data.scope,
                 user_info: userInfoResponse.data,
+                upload_result: uploadResult,
                 // user_videos: userVideosResponse.data,
             };
 
@@ -126,6 +132,62 @@ app.get("/api/callback", async (req, res) => {
         });
     }
 });
+
+
+
+// Function to download and upload video
+const uploadVideoToTikTok = async (accessToken) => {
+    try {
+        // Video URL
+        const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4";
+        const videoPath = path.join(__dirname, "video.mp4");
+
+        // Step 1: Download the video
+        const response = await axios({
+            url: videoUrl,
+            method: "GET",
+            responseType: "stream",
+        });
+
+        // Save the video locally
+        const writer = fs.createWriteStream(videoPath);
+        response.data.pipe(writer);
+
+        await new Promise((resolve, reject) => {
+            writer.on("finish", resolve);
+            writer.on("error", reject);
+        });
+
+        console.log("Video downloaded successfully.");
+
+        // Step 2: Upload video to TikTok
+        const uploadResponse = await axios.post(
+            "https://open.tiktokapis.com/v2/video/upload/",
+            {
+                video_file: fs.createReadStream(videoPath),
+                title: "My Test Video",
+                caption: "This is a test upload via API",
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "multipart/form-data",
+                },
+            }
+        );
+
+        console.log("TikTok Upload Response:", uploadResponse.data);
+
+        // Step 3: Clean up (delete local file)
+        fs.unlinkSync(videoPath);
+
+        return uploadResponse.data; // Return TikTok response
+    } catch (error) {
+        console.error("Error uploading video:", error.message);
+        return { error: "Video upload failed", details: error };
+    }
+};
+
 
 
 // Step 4: Home route for testing
