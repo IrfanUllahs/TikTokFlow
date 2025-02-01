@@ -146,6 +146,8 @@ const uploadVideoToTikTok = async (accessToken) => {
 
         // Function to upload each chunk
         const uploadChunk = async (chunkData, chunkIndex, totalChunks) => {
+            // Prepare FormData
+            // const formData = new FormData();
             formData.append("video_file", chunkData, { filename: `video_chunk_${chunkIndex + 1}.mp4` });
 
             const data = {
@@ -168,11 +170,12 @@ const uploadVideoToTikTok = async (accessToken) => {
             try {
                 const uploadResponse = await axios.post(
                     "https://open.tiktokapis.com/v2/video/upload/",
-                    data,
+                    formData,
                     {
                         headers: {
                             Authorization: `Bearer ${accessToken}`,
                             "Content-Type": "multipart/form-data",
+                            ...formData.getHeaders(), // Important for multipart/form-data
                         },
                     }
                 );
@@ -191,7 +194,7 @@ const uploadVideoToTikTok = async (accessToken) => {
 
         videoStream.on('data', async (chunk) => {
             console.log(`Uploading chunk ${chunkIndex + 1}...`);
-            const chunkData = chunk; // Get the chunk data
+            const chunkData = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk); // Ensure the chunk is a Buffer
             const result = await uploadChunk(chunkData, chunkIndex, totalChunks); // Upload each chunk
             uploadResults.push(result); // Store the result
             chunkIndex++;
@@ -219,6 +222,7 @@ const uploadVideoToTikTok = async (accessToken) => {
         return { error: "Video upload failed", details: error };
     }
 };
+
 
 // Step 4: Home route for testing
 app.use('/', (req, res) => {
