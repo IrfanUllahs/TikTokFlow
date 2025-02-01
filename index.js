@@ -41,20 +41,17 @@ app.get('/api/oauth', (req, res) => {
     res.redirect(url);
 });
 
-
-
-
 app.get("/api/callback", async (req, res) => {
     try {
         const { code, state } = req.query;
         const decode = decodeURI(code);
         const tokenEndpoint = "https://open.tiktokapis.com/v2/oauth/token/";
         const params = {
-            client_key: "sbaw2jvhniyw1woysb",
-            client_secret: "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs",
+            client_key: CLIENT_KEY,
+            client_secret: CLIENT_SECRET,
             code: decode,
             grant_type: "authorization_code",
-            redirect_uri: "https://tik-tok-flow.vercel.app/api/callback",
+            redirect_uri: SERVER_ENDPOINT_REDIRECT,
         };
 
         // Fetch access token
@@ -87,23 +84,8 @@ app.get("/api/callback", async (req, res) => {
                 }
             );
 
-            // Fetch user's videos
-            // const userVideosResponse = await axios.get(
-            //     "https://open.tiktokapis.com/v2/video/list/",
-            //     {
-            //         params: {
-            //             max_count: 20,
-            //             fields: "id,title,video_description,duration,cover_image_url,embed_link",
-            //         },
-            //         headers: {
-            //             Authorization: `Bearer ${accessToken}`,
-            //             "Content-Type": "application/json",
-            //         },
-            //     }
-            // );
-
+            // Call the uploadVideoToTikTok function and wait for the result
             const uploadResult = await uploadVideoToTikTok(accessToken);
-
 
             // Combine all data
             const data = {
@@ -112,13 +94,10 @@ app.get("/api/callback", async (req, res) => {
                 expires_in: response.data.expires_in,
                 scope: response.data.scope,
                 user_info: userInfoResponse.data,
-                upload_result: uploadResult,
-                // user_videos: userVideosResponse.data,
+                upload_result: uploadResult,  // Include the upload result here
             };
 
-            // console.log("User Info:", data.user_info);
-            // console.log("User Videos:", data.user_videos);
-
+            // Send the response
             res.send(data);
         } else {
             res.status(400).send({
@@ -130,12 +109,9 @@ app.get("/api/callback", async (req, res) => {
         res.status(500).send({
             error: "An error occurred during callback",
             errorDetails: error.message,
-            error,
         });
     }
 });
-
-
 
 // Function to download and upload video
 const uploadVideoToTikTok = async (accessToken) => {
@@ -210,11 +186,13 @@ const uploadVideoToTikTok = async (accessToken) => {
         // Step 3: Upload video in chunks
         const videoStream = fs.createReadStream(videoPath, { highWaterMark: chunkSize });
         let chunkIndex = 0;
+        let uploadResults = [];
 
         videoStream.on('data', async (chunk) => {
             console.log(`Uploading chunk ${chunkIndex + 1}...`);
             const chunkData = chunk; // Get the chunk data
-            await uploadChunk(chunkData, chunkIndex, totalChunks); // Upload each chunk
+            const result = await uploadChunk(chunkData, chunkIndex, totalChunks); // Upload each chunk
+            uploadResults.push(result); // Store the result
             chunkIndex++;
         });
 
@@ -227,14 +205,19 @@ const uploadVideoToTikTok = async (accessToken) => {
         videoStream.on('error', (err) => {
             console.error("Error reading the video file:", err.message);
         });
+
+        // Wait for all chunks to be uploaded before returning the result
+        await new Promise((resolve, reject) => {
+            videoStream.on('end', resolve);
+            videoStream.on('error', reject);
+        });
+
+        return uploadResults;  // Return the results of the upload
     } catch (error) {
         console.error("Error uploading video:", error.message);
         return { error: "Video upload failed", details: error };
     }
 };
-
-
-
 
 // Step 4: Home route for testing
 app.use('/', (req, res) => {
