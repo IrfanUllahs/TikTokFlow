@@ -147,7 +147,7 @@ const uploadVideoToTikTok = async (accessToken) => {
         // Function to upload each chunk
         const uploadChunk = async (chunkData, chunkIndex, totalChunks) => {
             // Prepare FormData
-            // const formData = new FormData();
+            const formData = new FormData();
             formData.append("video_file", chunkData, { filename: `video_chunk_${chunkIndex + 1}.mp4` });
 
             const data = {
@@ -180,10 +180,10 @@ const uploadVideoToTikTok = async (accessToken) => {
                     }
                 );
                 console.log(`Chunk ${chunkIndex + 1} uploaded successfully:`, uploadResponse.data);
-                return uploadResponse.data;
+                return { chunkIndex: chunkIndex + 1, status: 'success', data: uploadResponse.data };
             } catch (error) {
                 console.error(`Error uploading chunk ${chunkIndex + 1}:`, error.message);
-                return { error: `Chunk ${chunkIndex + 1} upload failed`, details: error.message };
+                return { chunkIndex: chunkIndex + 1, status: 'failure', error: error.message };
             }
         };
 
@@ -216,12 +216,21 @@ const uploadVideoToTikTok = async (accessToken) => {
             videoStream.on('error', reject);
         });
 
-        return uploadResults;  // Return the results of the upload
+        // Check if all chunks were uploaded successfully
+        const allChunksUploaded = uploadResults.every(result => result.status === 'success');
+        if (allChunksUploaded) {
+            console.log("All chunks uploaded successfully.");
+            return { success: true, message: "Video uploaded successfully", results: uploadResults };
+        } else {
+            console.log("Some chunks failed to upload.");
+            return { success: false, message: "Video upload failed", results: uploadResults };
+        }
     } catch (error) {
         console.error("Error uploading video:", error.message);
-        return { error: "Video upload failed", details: error };
+        return { success: false, message: "Video upload failed", details: error };
     }
 };
+
 
 
 // Step 4: Home route for testing
