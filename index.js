@@ -6,6 +6,7 @@ const querystring = require('querystring');
 const cors = require('cors');
 const fs = require("fs");
 const path = require("path");
+const FormData = require("form-data");
 
 require('dotenv').config();
 
@@ -231,7 +232,7 @@ const uploadVideoToTikTok = async (accessToken) => {
     }
 };
 
-module.exports = uploadVideoToTikTok;
+
 
 
 
