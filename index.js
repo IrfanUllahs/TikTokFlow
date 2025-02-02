@@ -237,6 +237,6 @@ module.exports = uploadVideoToTikTok;
 
 
 // Step 4: Home route for testing
-app.use('/', (req, res) => {
+app.get('/', (req, res) => {
     res.send('Welcome to the TikTok OAuth server. Navigate to /oauth to start the login process.');
 });
