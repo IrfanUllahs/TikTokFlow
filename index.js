@@ -14,10 +14,10 @@ require('dotenv').config();
 app.use(cookieParser());
 app.use(cors());
 
-// Constants (replace with your actual values)
-const CLIENT_KEY = "sbaw2jvhniyw1woysb"; // Your TikTok client key from the developer portal
-const CLIENT_SECRET = "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs"; // Your TikTok client secret
-const SERVER_ENDPOINT_REDIRECT = "https://tik-tok-flow.vercel.app/api/callback"; // Your redirect URI
+// Constants
+const CLIENT_KEY = "sbaw2jvhniyw1woysb";
+const CLIENT_SECRET = "5rwMEGrQbOUucP7MQLjCqqo6p8wGguPs";
+const SERVER_ENDPOINT_REDIRECT = "https://tik-tok-flow.vercel.app/api/callback";
 
 // Server listening on port
 const PORT = process.env.PORT || 5000;
@@ -27,11 +27,10 @@ app.listen(PORT, () => {
 
 // Step 1: Redirect user to TikTok for login
 app.get('/api/oauth', (req, res) => {
-    const csrfState = Math.random().toString(36).substring(2); // Generate a CSRF token
-    res.cookie('csrfState', csrfState, { maxAge: 60000 }); // Set CSRF token as a cookie
+    const csrfState = Math.random().toString(36).substring(2);
+    res.cookie('csrfState', csrfState, { maxAge: 60000 });
 
     let url = 'https://www.tiktok.com/v2/auth/authorize';
-
     url += `?client_key=${CLIENT_KEY}`;
     url += '&scope=user.info.basic,video.publish';
     url += '&response_type=code';
@@ -43,9 +42,10 @@ app.get('/api/oauth', (req, res) => {
 
 app.get("/api/callback", async (req, res) => {
     try {
-        const { code, state } = req.query;
+        const { code } = req.query;
         const decode = decodeURI(code);
         const tokenEndpoint = "https://open.tiktokapis.com/v2/oauth/token/";
+
         const params = {
             client_key: CLIENT_KEY,
             client_secret: CLIENT_SECRET,
@@ -66,7 +66,6 @@ app.get("/api/callback", async (req, res) => {
             }
         );
 
-        // Check if access token is available
         if (response.data.access_token) {
             const accessToken = response.data.access_token;
 
@@ -84,37 +83,111 @@ app.get("/api/callback", async (req, res) => {
                 }
             );
 
-            // Call the uploadVideoToTikTok function and wait for the result
-            // const uploadResult = await uploadVideoToTikTok(accessToken);
+            // Upload Video
+            const uploadResult = await uploadToTikTok(accessToken);
 
-            const uploadResult = await publishVideo(accessToken);
-            // Combine all data
             const data = {
                 access_token: response.data.access_token,
                 refresh_token: response.data.refresh_token,
                 expires_in: response.data.expires_in,
                 scope: response.data.scope,
                 user_info: userInfoResponse.data,
-                upload_result: uploadResult,  // Include the upload result here
+                upload_result: uploadResult,
             };
 
-            // Send the response
             res.send(data);
         } else {
-            res.status(400).send({
-                error: "Access token not found in the response",
-            });
+            res.status(400).send({ error: "Access token not found in the response" });
         }
     } catch (error) {
         console.error("Error during callback:", error.message);
-        res.status(500).send({
-            error: "An error occurred during callback",
-            errorDetails: error.message,
-        });
+        res.status(500).send({ error: "An error occurred during callback", errorDetails: error.message });
     }
 });
 
-// Function to download and upload video
+// Video Upload Functions
+const VIDEO_URL = 'https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4';
+const TEMP_DIR = path.join(__dirname, 'temp');
+const FILE_PATH = path.join(TEMP_DIR, 'video.mp4');
+
+async function ensureTempDirectory() {
+    await fs.promises.mkdir(TEMP_DIR, { recursive: true });
+}
+
+async function downloadVideo() {
+    console.log('Downloading video...');
+    const response = await axios({ url: VIDEO_URL, method: 'GET', responseType: 'stream' });
+
+    const writer = fs.createWriteStream(FILE_PATH);
+    response.data.pipe(writer);
+
+    return new Promise((resolve, reject) => {
+        writer.on('finish', () => {
+            console.log('Download complete.');
+            resolve();
+        });
+        writer.on('error', reject);
+    });
+}
+
+async function initializeUpload(ACCESS_TOKEN) {
+    console.log('Initializing upload...');
+    const response = await axios.post(
+        'https://open.tiktokapis.com/v2/post/publish/video/init/',
+        {
+            post_info: { title: 'My awesome video!', privacy_level: 'SELF_ONLY' },
+            source_info: { source: 'FILE_UPLOAD' }
+        },
+        { headers: { Authorization: `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' } }
+    );
+
+    const { upload_url, publish_id } = response.data.data;
+    console.log('Upload initialized:', { upload_url, publish_id });
+    return { upload_url, publish_id };
+}
+
+async function uploadVideo(uploadUrl) {
+    console.log('Uploading video...');
+    const fileStream = fs.createReadStream(FILE_PATH);
+    const response = await axios.put(uploadUrl, fileStream, {
+        headers: { 'Content-Type': 'video/mp4' },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity
+    });
+
+    console.log('Upload response:', response.status);
+    return response.status === 200;
+}
+
+async function publishVideo(publishId, ACCESS_TOKEN) {
+    console.log('Publishing video...');
+    const response = await axios.post(
+        'https://open.tiktokapis.com/v2/post/publish/video/commit/',
+        { publish_id: publishId },
+        { headers: { Authorization: `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' } }
+    );
+
+    console.log('Video published successfully!');
+    return response.data;
+}
+
+async function uploadToTikTok(access_token) {
+    try {
+        await ensureTempDirectory();
+        await downloadVideo();
+        const { upload_url, publish_id } = await initializeUpload(access_token);
+        const uploadSuccess = await uploadVideo(upload_url);
+        if (uploadSuccess) {
+            return await publishVideo(publish_id, access_token);
+        } else {
+            throw new Error("Upload failed");
+        }
+    } catch (error) {
+        console.error('Error:', error.response?.data || error);
+        return error.response?.data || error;
+    }
+}
+
 
 
 
@@ -233,39 +306,39 @@ app.get("/api/callback", async (req, res) => {
 //     }
 // };
 
-const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4"; // Replace with the publicly accessible video URL
-const postTitle = "My Test Video"; // Replace with your post title
+// const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4"; // Replace with the publicly accessible video URL
+// const postTitle = "My Test Video"; // Replace with your post title
 
-const publishVideo = async (accessToken) => {
-  try {
-    const response = await axios.post(
-      "https://open.tiktokapis.com/v2/post/publish/video/init/",
-      {
-        post_info: {
-          privacy_level: "SELF_ONLY", // Set video privacy
-          title: postTitle, // Video title
-          video_cover_timestamp_ms: 1000, // Time to pick as cover photo
-        },
-        source_info: {
-          source: "PULL_FROM_URL",
-          video_url: videoUrl, // Publicly accessible video URL
-        },
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`, // Attach the access token
-        },
-      }
-    );
+// const publishVideo = async (accessToken) => {
+//   try {
+//     const response = await axios.post(
+//       "https://open.tiktokapis.com/v2/post/publish/video/init/",
+//       {
+//         post_info: {
+//           privacy_level: "SELF_ONLY", // Set video privacy
+//           title: postTitle, // Video title
+//           video_cover_timestamp_ms: 1000, // Time to pick as cover photo
+//         },
+//         source_info: {
+//           source: "PULL_FROM_URL",
+//           video_url: videoUrl, // Publicly accessible video URL
+//         },
+//       },
+//       {
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${accessToken}`, // Attach the access token
+//         },
+//       }
+//     );
 
-    console.log("Video upload response:", response.data);
-    return response.data;
-  } catch (error) {
-    return error.response.data;
-    console.error("Error uploading video:", error.response ? error.response.data : error.message);
-  }
-};
+//     console.log("Video upload response:", response.data);
+//     return response.data;
+//   } catch (error) {
+//     return error.response.data;
+//     console.error("Error uploading video:", error.response ? error.response.data : error.message);
+//   }
+// };
 
 
 
