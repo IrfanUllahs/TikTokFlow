@@ -135,7 +135,11 @@ async function initializeUpload(ACCESS_TOKEN) {
     const response = await axios.post(
         'https://open.tiktokapis.com/v2/post/publish/video/init/',
         {
-            post_info: { title: 'My awesome video!', privacy_level: 'SELF_ONLY' },
+            post_info: {
+                title: 'My awesome video!',  // Provide a title for the video
+                description: 'This is an example video.',  // Add a description if needed
+                privacy_level: 'SELF_ONLY'  // Adjust privacy level as required
+            },
             source_info: { source: 'FILE_UPLOAD' }
         },
         { headers: { Authorization: `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' } }
@@ -145,6 +149,7 @@ async function initializeUpload(ACCESS_TOKEN) {
     console.log('Upload initialized:', { upload_url, publish_id });
     return { upload_url, publish_id };
 }
+
 
 async function uploadVideo(uploadUrl) {
     console.log('Uploading video...');
