@@ -107,11 +107,11 @@ app.get("/api/callback", async (req, res) => {
 
 // Video Upload Functions
 const VIDEO_URL = 'https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4';
-const TEMP_DIR = path.join(__dirname, 'temp');
-const FILE_PATH = path.join(TEMP_DIR, 'video.mp4');
+const TEMP_DIR = '/tmp'; // Use the '/tmp' directory for Vercel
+const FILE_PATH = `${TEMP_DIR}/video.mp4`; // Store the video file in the /tmp directory
 
 async function ensureTempDirectory() {
-    await fs.promises.mkdir(TEMP_DIR, { recursive: true });
+    // '/tmp' directory should already exist, so no need to create it manually on Vercel
 }
 
 async function downloadVideo() {
@@ -173,8 +173,7 @@ async function publishVideo(publishId, ACCESS_TOKEN) {
 
 async function uploadToTikTok(access_token) {
     try {
-        await ensureTempDirectory();
-        await downloadVideo();
+        await downloadVideo(); // No need to create the temp directory manually, it's handled by Vercel.
         const { upload_url, publish_id } = await initializeUpload(access_token);
         const uploadSuccess = await uploadVideo(upload_url);
         if (uploadSuccess) {
@@ -187,6 +186,7 @@ async function uploadToTikTok(access_token) {
         return error.response?.data || error;
     }
 }
+
 
 
 
