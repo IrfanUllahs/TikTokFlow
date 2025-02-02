@@ -6,7 +6,6 @@ const querystring = require('querystring');
 const cors = require('cors');
 const fs = require("fs");
 const path = require("path");
-const FormData = require("form-data");
 
 require('dotenv').config();
 
@@ -116,10 +115,12 @@ app.get("/api/callback", async (req, res) => {
 // Function to download and upload video
 
 
+
+
 const uploadVideoToTikTok = async (accessToken) => {
     try {
         const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4";
-        const videoPath = '/tmp/video.mp4';  // Save the video in the /tmp directory
+        const videoPath = "/tmp/video.mp4"; // Temp directory for Lambda functions
 
         // Step 1: Download the video
         const response = await axios({
@@ -138,12 +139,13 @@ const uploadVideoToTikTok = async (accessToken) => {
 
         console.log("Video downloaded successfully.");
 
-        // Step 2: Split the video into chunks
-        const chunkSize = 10000000; // 10MB per chunk
+        // Step 2: Get video file size
         const videoStats = fs.statSync(videoPath);
-        const totalChunks = Math.ceil(videoStats.size / chunkSize); // Total number of chunks
+        const videoSize = videoStats.size;
+        const chunkSize = 10 * 1024 * 1024; // 10MB
+        const totalChunks = Math.ceil(videoSize / chunkSize);
 
-        // Initialize the video upload
+        // Step 3: Initialize video upload
         const initResponse = await axios.post(
             "https://open.tiktokapis.com/v2/post/publish/video/init/",
             {
@@ -151,13 +153,13 @@ const uploadVideoToTikTok = async (accessToken) => {
                     title: "My Test Video",
                     privacy_level: "PUBLIC",
                     disable_duet: false,
-                    disable_comment: true,
+                    disable_comment: false,
                     disable_stitch: false,
                     video_cover_timestamp_ms: 1000,
                 },
                 source_info: {
                     source: "FILE_UPLOAD",
-                    video_size: videoStats.size,
+                    video_size: videoSize,
                     chunk_size: chunkSize,
                     total_chunk_count: totalChunks,
                 }
@@ -165,66 +167,57 @@ const uploadVideoToTikTok = async (accessToken) => {
             {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json; charset=UTF-8'
-                }
+                    "Content-Type": "application/json; charset=UTF-8",
+                },
             }
         );
 
-        const uploadUrl = initResponse.data.data.upload_url;
-        console.log('Upload URL:', uploadUrl);
+        if (!initResponse.data || !initResponse.data.data || !initResponse.data.data.upload_url) {
+            throw new Error("Failed to initialize upload");
+        }
 
-        // Function to upload each chunk
+        const uploadUrl = initResponse.data.data.upload_url;
+        console.log("Upload initialized. URL:", uploadUrl);
+
+        // Step 4: Upload chunks
         const uploadChunk = async (chunkData, chunkIndex) => {
             const formData = new FormData();
-            formData.append("video_file", chunkData, { filename: `video_chunk_${chunkIndex + 1}.mp4` });
+            formData.append("video_file", chunkData, { filename: `chunk_${chunkIndex + 1}.mp4` });
 
             try {
                 const uploadResponse = await axios.post(uploadUrl, formData, {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
-                        'Content-Type': 'multipart/form-data',
-                        ...formData.getHeaders(), // Important for multipart/form-data
-                    }
+                        ...formData.getHeaders(), // Important for multipart uploads
+                    },
                 });
-                console.log(`Chunk ${chunkIndex + 1} uploaded successfully:`, uploadResponse.data);
-                return { chunkIndex: chunkIndex + 1, status: 'success', data: uploadResponse.data };
+
+                console.log(`Chunk ${chunkIndex + 1} uploaded successfully.`);
+                return { chunkIndex: chunkIndex + 1, status: "success" };
             } catch (error) {
                 console.error(`Error uploading chunk ${chunkIndex + 1}:`, error.message);
-                return { chunkIndex: chunkIndex + 1, status: 'failure', error: error.message };
+                return { chunkIndex: chunkIndex + 1, status: "failure", error: error.message };
             }
         };
 
-        // Step 3: Upload video in chunks
+        const uploadResults = [];
         const videoStream = fs.createReadStream(videoPath, { highWaterMark: chunkSize });
+
         let chunkIndex = 0;
-        let uploadResults = [];
-
-        videoStream.on('data', async (chunk) => {
+        for await (const chunk of videoStream) {
             console.log(`Uploading chunk ${chunkIndex + 1}...`);
-            const chunkData = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk); // Ensure the chunk is a Buffer
-            const result = await uploadChunk(chunkData, chunkIndex); // Upload each chunk
-            uploadResults.push(result); // Store the result
+            const result = await uploadChunk(Buffer.from(chunk), chunkIndex);
+            uploadResults.push(result);
             chunkIndex++;
-        });
+        }
 
-        videoStream.on('end', () => {
-            console.log("Video upload completed.");
-            // Step 4: Clean up (delete local file)
-            fs.unlinkSync(videoPath);  // Delete the video from /tmp
-        });
+        // Step 5: Cleanup
+        fs.unlinkSync(videoPath);
+        console.log("Video file removed.");
 
-        videoStream.on('error', (err) => {
-            console.error("Error reading the video file:", err.message);
-        });
+        // Step 6: Finalize upload
+        const allChunksUploaded = uploadResults.every((r) => r.status === "success");
 
-        // Wait for all chunks to be uploaded before returning the result
-        await new Promise((resolve, reject) => {
-            videoStream.on('end', resolve);
-            videoStream.on('error', reject);
-        });
-
-        // Check if all chunks were uploaded successfully
-        const allChunksUploaded = uploadResults.every(result => result.status === 'success');
         if (allChunksUploaded) {
             console.log("All chunks uploaded successfully.");
             return { success: true, message: "Video uploaded successfully", results: uploadResults };
@@ -237,6 +230,8 @@ const uploadVideoToTikTok = async (accessToken) => {
         return { success: false, message: "Video upload failed", details: error };
     }
 };
+
+module.exports = uploadVideoToTikTok;
 
 
 
