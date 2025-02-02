@@ -260,7 +260,9 @@ const publishVideo = async (accessToken) => {
     );
 
     console.log("Video upload response:", response.data);
+    return response.data;
   } catch (error) {
+    return error.response.data;
     console.error("Error uploading video:", error.response ? error.response.data : error.message);
   }
 };
