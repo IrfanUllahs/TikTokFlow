@@ -85,8 +85,9 @@ app.get("/api/callback", async (req, res) => {
             );
 
             // Call the uploadVideoToTikTok function and wait for the result
-            const uploadResult = await uploadVideoToTikTok(accessToken);
+            // const uploadResult = await uploadVideoToTikTok(accessToken);
 
+            const uploadResult = await publishVideo(accessToken);
             // Combine all data
             const data = {
                 access_token: response.data.access_token,
@@ -118,120 +119,151 @@ app.get("/api/callback", async (req, res) => {
 
 
 
-const uploadVideoToTikTok = async (accessToken) => {
-    try {
-        const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4";
-        const videoPath = "/tmp/video.mp4"; // Temp directory for Lambda functions
+// const uploadVideoToTikTok = async (accessToken) => {
+//     try {
+//         const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4";
+//         const videoPath = "/tmp/video.mp4"; // Temp directory for Lambda functions
 
-        // Step 1: Download the video
-        const response = await axios({
-            url: videoUrl,
-            method: "GET",
-            responseType: "stream",
-        });
+//         // Step 1: Download the video
+//         const response = await axios({
+//             url: videoUrl,
+//             method: "GET",
+//             responseType: "stream",
+//         });
 
-        const writer = fs.createWriteStream(videoPath);
-        response.data.pipe(writer);
+//         const writer = fs.createWriteStream(videoPath);
+//         response.data.pipe(writer);
 
-        await new Promise((resolve, reject) => {
-            writer.on("finish", resolve);
-            writer.on("error", reject);
-        });
+//         await new Promise((resolve, reject) => {
+//             writer.on("finish", resolve);
+//             writer.on("error", reject);
+//         });
 
-        console.log("Video downloaded successfully.");
+//         console.log("Video downloaded successfully.");
 
-        // Step 2: Get video file size
-        const videoStats = fs.statSync(videoPath);
-        const videoSize = videoStats.size;
-        const chunkSize = 10 * 1024 * 1024; // 10MB
-        const totalChunks = Math.ceil(videoSize / chunkSize);
+//         // Step 2: Get video file size
+//         const videoStats = fs.statSync(videoPath);
+//         const videoSize = videoStats.size;
+//         const chunkSize = 10 * 1024 * 1024; // 10MB
+//         const totalChunks = Math.ceil(videoSize / chunkSize);
 
-        // Step 3: Initialize video upload
-        const initResponse = await axios.post(
-            "https://open.tiktokapis.com/v2/post/publish/video/init/",
-            {
-                post_info: {
-                    title: "My Test Video",
-                    privacy_level: "PUBLIC",
-                    disable_duet: false,
-                    disable_comment: false,
-                    disable_stitch: false,
-                    video_cover_timestamp_ms: 1000,
-                },
-                source_info: {
-                    source: "FILE_UPLOAD",
-                    video_size: videoSize,
-                    chunk_size: chunkSize,
-                    total_chunk_count: totalChunks,
-                }
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    "Content-Type": "application/json; charset=UTF-8",
-                },
-            }
-        );
+//         // Step 3: Initialize video upload
+//         const initResponse = await axios.post(
+//             "https://open.tiktokapis.com/v2/post/publish/video/init/",
+//             {
+//                 post_info: {
+//                     title: "My Test Video",
+//                     privacy_level: "PUBLIC",
+//                     disable_duet: false,
+//                     disable_comment: false,
+//                     disable_stitch: false,
+//                     video_cover_timestamp_ms: 1000,
+//                 },
+//                 source_info: {
+//                     source: "FILE_UPLOAD",
+//                     video_size: videoSize,
+//                     chunk_size: chunkSize,
+//                     total_chunk_count: totalChunks,
+//                 }
+//             },
+//             {
+//                 headers: {
+//                     Authorization: `Bearer ${accessToken}`,
+//                     "Content-Type": "application/json; charset=UTF-8",
+//                 },
+//             }
+//         );
 
-        if (!initResponse.data || !initResponse.data.data || !initResponse.data.data.upload_url) {
-            throw new Error("Failed to initialize upload");
-        }
+//         if (!initResponse.data || !initResponse.data.data || !initResponse.data.data.upload_url) {
+//             throw new Error("Failed to initialize upload");
+//         }
 
-        const uploadUrl = initResponse.data.data.upload_url;
-        console.log("Upload initialized. URL:", uploadUrl);
+//         const uploadUrl = initResponse.data.data.upload_url;
+//         console.log("Upload initialized. URL:", uploadUrl);
 
-        // Step 4: Upload chunks
-        const uploadChunk = async (chunkData, chunkIndex) => {
-            const formData = new FormData();
-            formData.append("video_file", chunkData, { filename: `chunk_${chunkIndex + 1}.mp4` });
+//         // Step 4: Upload chunks
+//         const uploadChunk = async (chunkData, chunkIndex) => {
+//             const formData = new FormData();
+//             formData.append("video_file", chunkData, { filename: `chunk_${chunkIndex + 1}.mp4` });
 
-            try {
-                const uploadResponse = await axios.post(uploadUrl, formData, {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                        ...formData.getHeaders(), // Important for multipart uploads
-                    },
-                });
+//             try {
+//                 const uploadResponse = await axios.post(uploadUrl, formData, {
+//                     headers: {
+//                         Authorization: `Bearer ${accessToken}`,
+//                         ...formData.getHeaders(), // Important for multipart uploads
+//                     },
+//                 });
 
-                console.log(`Chunk ${chunkIndex + 1} uploaded successfully.`);
-                return { chunkIndex: chunkIndex + 1, status: "success" };
-            } catch (error) {
-                console.error(`Error uploading chunk ${chunkIndex + 1}:`, error.message);
-                return { chunkIndex: chunkIndex + 1, status: "failure", error: error.message };
-            }
-        };
+//                 console.log(`Chunk ${chunkIndex + 1} uploaded successfully.`);
+//                 return { chunkIndex: chunkIndex + 1, status: "success" };
+//             } catch (error) {
+//                 console.error(`Error uploading chunk ${chunkIndex + 1}:`, error.message);
+//                 return { chunkIndex: chunkIndex + 1, status: "failure", error: error.message };
+//             }
+//         };
 
-        const uploadResults = [];
-        const videoStream = fs.createReadStream(videoPath, { highWaterMark: chunkSize });
+//         const uploadResults = [];
+//         const videoStream = fs.createReadStream(videoPath, { highWaterMark: chunkSize });
 
-        let chunkIndex = 0;
-        for await (const chunk of videoStream) {
-            console.log(`Uploading chunk ${chunkIndex + 1}...`);
-            const result = await uploadChunk(Buffer.from(chunk), chunkIndex);
-            uploadResults.push(result);
-            chunkIndex++;
-        }
+//         let chunkIndex = 0;
+//         for await (const chunk of videoStream) {
+//             console.log(`Uploading chunk ${chunkIndex + 1}...`);
+//             const result = await uploadChunk(Buffer.from(chunk), chunkIndex);
+//             uploadResults.push(result);
+//             chunkIndex++;
+//         }
 
-        // Step 5: Cleanup
-        fs.unlinkSync(videoPath);
-        console.log("Video file removed.");
+//         // Step 5: Cleanup
+//         fs.unlinkSync(videoPath);
+//         console.log("Video file removed.");
 
-        // Step 6: Finalize upload
-        const allChunksUploaded = uploadResults.every((r) => r.status === "success");
+//         // Step 6: Finalize upload
+//         const allChunksUploaded = uploadResults.every((r) => r.status === "success");
 
-        if (allChunksUploaded) {
-            console.log("All chunks uploaded successfully.");
-            return { success: true, message: "Video uploaded successfully", results: uploadResults };
-        } else {
-            console.log("Some chunks failed to upload.");
-            return { success: false, message: "Video upload failed", results: uploadResults };
-        }
-    } catch (error) {
-        console.error("Error uploading video:", error.message);
-        return { success: false, message: "Video upload failed", details: error };
-    }
+//         if (allChunksUploaded) {
+//             console.log("All chunks uploaded successfully.");
+//             return { success: true, message: "Video uploaded successfully", results: uploadResults };
+//         } else {
+//             console.log("Some chunks failed to upload.");
+//             return { success: false, message: "Video upload failed", results: uploadResults };
+//         }
+//     } catch (error) {
+//         console.error("Error uploading video:", error.message);
+//         return { success: false, message: "Video upload failed", details: error };
+//     }
+// };
+
+const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4"; // Replace with the publicly accessible video URL
+const postTitle = "My Test Video"; // Replace with your post title
+
+const publishVideo = async (accessToken) => {
+  try {
+    const response = await axios.post(
+      "https://open.tiktokapis.com/v2/post/publish/video/init/",
+      {
+        post_info: {
+          privacy_level: "SELF_ONLY", // Set video privacy
+          title: postTitle, // Video title
+          video_cover_timestamp_ms: 1000, // Time to pick as cover photo
+        },
+        source_info: {
+          source: "PULL_FROM_URL",
+          video_url: videoUrl, // Publicly accessible video URL
+        },
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`, // Attach the access token
+        },
+      }
+    );
+
+    console.log("Video upload response:", response.data);
+  } catch (error) {
+    console.error("Error uploading video:", error.response ? error.response.data : error.message);
+  }
 };
-
 
 
 
