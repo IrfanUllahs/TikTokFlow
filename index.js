@@ -131,24 +131,38 @@ async function downloadVideo() {
 }
 
 async function initializeUpload(ACCESS_TOKEN) {
-    console.log('Initializing upload...');
-    const response = await axios.post(
-        'https://open.tiktokapis.com/v2/post/publish/video/init/',
-        {
-            post_info: {
-                title: 'My awesome video!',  // Provide a title for the video
-                description: 'This is an example video.',  // Add a description if needed
-                privacy_level: 'SELF_ONLY'  // Adjust privacy level as required
+    try {
+        console.log('Initializing upload...');
+        const response = await axios.post(
+            'https://open.tiktokapis.com/v2/post/publish/video/init/',
+            {
+                post_info: {
+                    title: 'My awesome video!',         // Video title
+                    description: 'This is an example video.', // Optional description
+                    privacy_level: 'SELF_ONLY',        // Video visibility
+                    tags: ['sample', 'demo'],         // Add tags if necessary
+                    cover_image: 'https://path_to_cover_image.jpg' // Optional: Video cover image
+                },
+                source_info: { source: 'FILE_UPLOAD' }
             },
-            source_info: { source: 'FILE_UPLOAD' }
-        },
-        { headers: { Authorization: `Bearer ${ACCESS_TOKEN}`, 'Content-Type': 'application/json' } }
-    );
+            {
+                headers: {
+                    Authorization: `Bearer ${ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
 
-    const { upload_url, publish_id } = response.data.data;
-    console.log('Upload initialized:', { upload_url, publish_id });
-    return { upload_url, publish_id };
+        const { upload_url, publish_id } = response.data.data;
+        console.log('Upload initialized:', { upload_url, publish_id });
+        return { upload_url, publish_id };
+
+    } catch (error) {
+        console.error('Error during upload initialization:', error.response?.data || error);
+        return error.response?.data || error;
+    }
 }
+
 
 
 async function uploadVideo(uploadUrl) {
