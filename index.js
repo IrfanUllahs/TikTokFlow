@@ -95,8 +95,6 @@ app.get("/api/callback", async (req, res) => {
                 scope: response.data.scope,
                 user_info: userInfoResponse.data,
                 upload_result: uploadResult,  // Include the upload result here
-                error:uploadResult?.response?.data
-                
             };
 
             // Send the response
@@ -118,175 +116,127 @@ app.get("/api/callback", async (req, res) => {
 // Function to download and upload video
 
 
-// const uploadVideoToTikTok = async (accessToken) => {
-//     try {
-//         const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4";
-//         const videoPath = '/tmp/video.mp4';  // Save the video in the /tmp directory
-
-//         // Step 1: Download the video
-//         const response = await axios({
-//             url: videoUrl,
-//             method: "GET",
-//             responseType: "stream",
-//         });
-
-//         const writer = fs.createWriteStream(videoPath);
-//         response.data.pipe(writer);
-
-//         await new Promise((resolve, reject) => {
-//             writer.on("finish", resolve);
-//             writer.on("error", reject);
-//         });
-
-//         console.log("Video downloaded successfully.");
-
-//         // Step 2: Split the video into chunks
-//         const chunkSize = 10000000; // 10MB per chunk
-//         const videoStats = fs.statSync(videoPath);
-//         const totalChunks = Math.ceil(videoStats.size / chunkSize); // Total number of chunks
-
-//         // Initialize the video upload
-//         const initResponse = await axios.post(
-//             "https://open.tiktokapis.com/v2/post/publish/video/init/",
-//             {
-//                 post_info: {
-//                     title: "My Test Video",
-//                     privacy_level: "PUBLIC",
-//                     disable_duet: false,
-//                     disable_comment: true,
-//                     disable_stitch: false,
-//                     video_cover_timestamp_ms: 1000,
-//                 },
-//                 source_info: {
-//                     source: "FILE_UPLOAD",
-//                     video_size: videoStats.size,
-//                     chunk_size: chunkSize,
-//                     total_chunk_count: totalChunks,
-//                 }
-//             },
-//             {
-//                 headers: {
-//                     Authorization: `Bearer ${accessToken}`,
-//                     'Content-Type': 'application/json; charset=UTF-8'
-//                 }
-//             }
-//         );
-
-//         const uploadUrl = initResponse.data.data.upload_url;
-//         console.log('Upload URL:', uploadUrl);
-
-//         // Function to upload each chunk
-//         const uploadChunk = async (chunkData, chunkIndex) => {
-//             const formData = new FormData();
-//             formData.append("video_file", chunkData, { filename: `video_chunk_${chunkIndex + 1}.mp4` });
-
-//             try {
-//                 const uploadResponse = await axios.post(uploadUrl, formData, {
-//                     headers: {
-//                         Authorization: `Bearer ${accessToken}`,
-//                         'Content-Type': 'multipart/form-data',
-//                         ...formData.getHeaders(), // Important for multipart/form-data
-//                     }
-//                 });
-//                 console.log(`Chunk ${chunkIndex + 1} uploaded successfully:`, uploadResponse.data);
-//                 return { chunkIndex: chunkIndex + 1, status: 'success', data: uploadResponse.data };
-//             } catch (error) {
-//                 console.error(`Error uploading chunk ${chunkIndex + 1}:`, error.message);
-//                 return { chunkIndex: chunkIndex + 1, status: 'failure', error: error.message };
-//             }
-//         };
-
-//         // Step 3: Upload video in chunks
-//         const videoStream = fs.createReadStream(videoPath, { highWaterMark: chunkSize });
-//         let chunkIndex = 0;
-//         let uploadResults = [];
-
-//         videoStream.on('data', async (chunk) => {
-//             console.log(`Uploading chunk ${chunkIndex + 1}...`);
-//             const chunkData = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk); // Ensure the chunk is a Buffer
-//             const result = await uploadChunk(chunkData, chunkIndex); // Upload each chunk
-//             uploadResults.push(result); // Store the result
-//             chunkIndex++;
-//         });
-
-//         videoStream.on('end', () => {
-//             console.log("Video upload completed.");
-//             // Step 4: Clean up (delete local file)
-//             fs.unlinkSync(videoPath);  // Delete the video from /tmp
-//         });
-
-//         videoStream.on('error', (err) => {
-//             console.error("Error reading the video file:", err.message);
-//         });
-
-//         // Wait for all chunks to be uploaded before returning the result
-//         await new Promise((resolve, reject) => {
-//             videoStream.on('end', resolve);
-//             videoStream.on('error', reject);
-//         });
-
-//         // Check if all chunks were uploaded successfully
-//         const allChunksUploaded = uploadResults.every(result => result.status === 'success');
-//         if (allChunksUploaded) {
-//             console.log("All chunks uploaded successfully.");
-//             return { success: true, message: "Video uploaded successfully", results: uploadResults };
-//         } else {
-//             console.log("Some chunks failed to upload.");
-//             return { success: false, message: "Video upload failed", results: uploadResults };
-//         }
-//     } catch (error) {
-//         console.error("Error uploading video:", error.message);
-//         return { success: false, message: "Video upload failed", details: error };
-//     }
-// };
-
-const axios = require('axios'); // For making HTTP requests
-const fs = require('fs'); // For file system operations (if needed)
-const { error } = require('console');
-
-async function uploadVideoToTikTok(accessToken) {
-  try {
-    // 1. Download the video (this is the most complex part)
-
+const uploadVideoToTikTok = async (accessToken) => {
+    try {
         const videoUrl = "https://videos.pexels.com/video-files/8714839/8714839-uhd_2560_1440_25fps.mp4";
+        const videoPath = '/tmp/video.mp4';  // Save the video in the /tmp directory
 
-    const videoResponse = await axios.get(videoUrl, { responseType: 'stream' });
-    const videoBuffer = [];
+        // Step 1: Download the video
+        const response = await axios({
+            url: videoUrl,
+            method: "GET",
+            responseType: "stream",
+        });
 
-    for await (const chunk of videoResponse.data) {
-       videoBuffer.push(chunk);
+        const writer = fs.createWriteStream(videoPath);
+        response.data.pipe(writer);
+
+        await new Promise((resolve, reject) => {
+            writer.on("finish", resolve);
+            writer.on("error", reject);
+        });
+
+        console.log("Video downloaded successfully.");
+
+        // Step 2: Split the video into chunks
+        const chunkSize = 10000000; // 10MB per chunk
+        const videoStats = fs.statSync(videoPath);
+        const totalChunks = Math.ceil(videoStats.size / chunkSize); // Total number of chunks
+
+        // Initialize the video upload
+        const initResponse = await axios.post(
+            "https://open.tiktokapis.com/v2/post/publish/video/init/",
+            {
+                post_info: {
+                    title: "My Test Video",
+                    privacy_level: "PUBLIC",
+                    disable_duet: false,
+                    disable_comment: true,
+                    disable_stitch: false,
+                    video_cover_timestamp_ms: 1000,
+                },
+                source_info: {
+                    source: "FILE_UPLOAD",
+                    video_size: videoStats.size,
+                    chunk_size: chunkSize,
+                    total_chunk_count: totalChunks,
+                }
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json; charset=UTF-8'
+                }
+            }
+        );
+
+        const uploadUrl = initResponse.data.data.upload_url;
+        console.log('Upload URL:', uploadUrl);
+
+        // Function to upload each chunk
+        const uploadChunk = async (chunkData, chunkIndex) => {
+            const formData = new FormData();
+            formData.append("video_file", chunkData, { filename: `video_chunk_${chunkIndex + 1}.mp4` });
+
+            try {
+                const uploadResponse = await axios.post(uploadUrl, formData, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        'Content-Type': 'multipart/form-data',
+                        ...formData.getHeaders(), // Important for multipart/form-data
+                    }
+                });
+                console.log(`Chunk ${chunkIndex + 1} uploaded successfully:`, uploadResponse.data);
+                return { chunkIndex: chunkIndex + 1, status: 'success', data: uploadResponse.data };
+            } catch (error) {
+                console.error(`Error uploading chunk ${chunkIndex + 1}:`, error.message);
+                return { chunkIndex: chunkIndex + 1, status: 'failure', error: error.message };
+            }
+        };
+
+        // Step 3: Upload video in chunks
+        const videoStream = fs.createReadStream(videoPath, { highWaterMark: chunkSize });
+        let chunkIndex = 0;
+        let uploadResults = [];
+
+        videoStream.on('data', async (chunk) => {
+            console.log(`Uploading chunk ${chunkIndex + 1}...`);
+            const chunkData = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk); // Ensure the chunk is a Buffer
+            const result = await uploadChunk(chunkData, chunkIndex); // Upload each chunk
+            uploadResults.push(result); // Store the result
+            chunkIndex++;
+        });
+
+        videoStream.on('end', () => {
+            console.log("Video upload completed.");
+            // Step 4: Clean up (delete local file)
+            fs.unlinkSync(videoPath);  // Delete the video from /tmp
+        });
+
+        videoStream.on('error', (err) => {
+            console.error("Error reading the video file:", err.message);
+        });
+
+        // Wait for all chunks to be uploaded before returning the result
+        await new Promise((resolve, reject) => {
+            videoStream.on('end', resolve);
+            videoStream.on('error', reject);
+        });
+
+        // Check if all chunks were uploaded successfully
+        const allChunksUploaded = uploadResults.every(result => result.status === 'success');
+        if (allChunksUploaded) {
+            console.log("All chunks uploaded successfully.");
+            return { success: true, message: "Video uploaded successfully", results: uploadResults };
+        } else {
+            console.log("Some chunks failed to upload.");
+            return { success: false, message: "Video upload failed", results: uploadResults };
+        }
+    } catch (error) {
+        console.error("Error uploading video:", error.message);
+        return { success: false, message: "Video upload failed", details: error };
     }
-
-    const videoData = Buffer.concat(videoBuffer)
-
-    // 2. (Potentially) Create a form data object (if required by the API)
-    const formData = new FormData();
-    formData.append('video', videoData, 'video.mp4'); // Filename is important
-    // Add other required parameters (description, etc.) as per the API docs
-
-    // 3. Make the API request
-    const response = await axios.post(
-      'TIKTOK_API_ENDPOINT', // Replace with the actual TikTok API endpoint
-      formData, // Or videoBuffer if form data not needed
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`, // Important!
-          ...formData.getHeaders(), // If using form data
-        },
-      }
-    );
-
-    console.log('TikTok API Response:', response.data);
-    return response.data;
-
-  } catch (error) {
-    console.error('Error uploading to TikTok:', error);
-    if (error.response) {
-      console.error('TikTok API Error Details:', error);
-    }
-    throw error; // Re-throw the error for handling elsewhere
-  }
-}
+};
 
 
 
