@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 
 
-app.use(admin.options.rootPath, adminRouter);
+// app.use(admin.options.rootPath, adminRouter);
 app.use('/', (req, res) => {
     res.send('Hello, World!');
 })
