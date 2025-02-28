@@ -2,7 +2,7 @@ import sequelize from "./database.js"
 import { admin, adminRouter } from "./admin.js";
 import express from "express";
 import cors from "cors";
-const cookieParser = require('cookie-parser');
+import cookieParser from "cookie-parser";
 const app = express();
 
 // app.use(express.json());
