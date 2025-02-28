@@ -4,8 +4,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node --experimental-json-modules app.js",
-    "dev": "nodemon --experimental-json-modules app.js"
+    "start": "node --experimental-json-modules index.js",
+    "dev": "nodemon --experimental-json-modules index.js"
   },
   "author": "",
   "license": "ISC",
