@@ -9,7 +9,7 @@ const app = express();
 app.use(cookieParser());
 app.use(cors());
 
-// app.use(admin.options.rootPath, adminRouter);
+app.use(admin.options.rootPath, adminRouter);
 app.get('/', (req, res) => {
     res.send('Hello, World!');
 })

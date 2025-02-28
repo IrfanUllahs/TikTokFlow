@@ -11,6 +11,7 @@ const admin = new AdminJS({
   rootPath: "/admin",
 });
 
+adminJS.watch()
 const adminRouter = AdminJSExpress.buildRouter(admin);
 
 export { admin, adminRouter };
