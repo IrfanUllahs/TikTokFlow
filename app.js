@@ -8,7 +8,9 @@ app.use(express.json());
 
 
 app.use(admin.options.rootPath, adminRouter);
-
+app.use('/', (req, res) => {
+    res.send('Hello, World!');
+})
 sequelize
   .sync() // Adjust database schema automatically
   .then(() => console.log("Database connected and synced"))
